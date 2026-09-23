@@ -1,0 +1,310 @@
+// UsArchive — modelo de datos
+// PostgreSQL vía Prisma. Diseño relacional, sin tablas monstruo.
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ---------- IDENTIDAD Y PAREJA ----------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships    CoupleMember[]
+  entriesWritten KnowledgeEntry[] @relation("EntryAuthor")
+  memories       Memory[]         @relation("MemoryAuthor")
+  sessions       Session[]
+  notifications  Notification[]
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  refreshToken String   @unique
+  userAgent    String?
+  ip           String?
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+  revokedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Una Couple conecta a dos usuarios. Cada usuario tiene un "Profile" que
+// representa LO QUE EL OTRO sabe sobre él/ella — no es autobiográfico.
+model Couple {
+  id        String   @id @default(cuid())
+  status    CoupleStatus @default(PENDING)
+  theme     CoupleTheme  @default(MINIMAL)
+  createdAt DateTime @default(now())
+
+  members     CoupleMember[]
+  invitation  Invitation?
+  profiles    Profile[]
+  timeline    TimelineEvent[]
+}
+
+enum CoupleStatus {
+  PENDING   // esperando que se vincule la segunda persona
+  ACTIVE
+}
+
+enum CoupleTheme {
+  GARDEN
+  MIDNIGHT
+  PAPER
+  DIGITAL
+  SUNSET
+  COSMIC
+  MINIMAL
+  CUSTOM
+}
+
+model CoupleMember {
+  id       String @id @default(cuid())
+  coupleId String
+  userId   String
+  nickname String // cómo lo llama su pareja ("Wawa")
+  joinedAt DateTime @default(now())
+
+  couple Couple @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([coupleId, userId])
+  @@index([userId])
+}
+
+model Invitation {
+  id        String   @id @default(cuid())
+  coupleId  String   @unique
+  code      String   @unique // ej. INV-7K92-XP
+  createdBy String
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  couple Couple @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+}
+
+// El Profile es EL ESPACIO PRIVADO que un miembro construye sobre el otro.
+// ownerId = quién ESCRIBE. subjectMemberId = SOBRE QUIÉN se escribe.
+// La autorización server-side sólo deja escribir al owner y leer a ambos
+// (el subject puede opcionalmente ver lo que se descubrió sobre sí mismo,
+// configurable — por defecto oculto, ver Privacy Center).
+model Profile {
+  id              String  @id @default(cuid())
+  coupleId        String
+  ownerId         String  // User que escribe
+  subjectMemberId String  // CoupleMember sobre quien trata
+  visibleToSubject Boolean @default(false)
+  accessPasscodeHash String? // passcode opcional adicional al perfil (hasheado)
+  createdAt       DateTime @default(now())
+
+  couple  Couple @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+
+  categories KnowledgeCategory[]
+  entries    KnowledgeEntry[]
+  memories   Memory[]
+  giftIdeas  GiftIdea[]
+  wishlist   WishlistItem[]
+  quizzes    Quiz[]
+
+  @@unique([coupleId, ownerId, subjectMemberId])
+  @@index([ownerId])
+}
+
+// ---------- CONOCIMIENTO ----------
+
+model KnowledgeCategory {
+  id        String  @id @default(cuid())
+  profileId String
+  key       String  // "music", "food", "gifts", "personality", "places", "details", "memories"
+  label     String
+  icon      String
+  order     Int     @default(0)
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  entries KnowledgeEntry[]
+
+  @@unique([profileId, key])
+}
+
+enum ConfidenceLevel {
+  ASSUMED      // 🤔 Creo
+  LIKELY       // 🟡 Probablemente
+  CONFIRMED    // 🟢 Confirmado
+  TOLD_ME      // 💬 Me lo contó
+  LIVED_IT     // ❤️ Lo viví con ella
+}
+
+model KnowledgeEntry {
+  id          String   @id @default(cuid())
+  profileId   String
+  categoryId  String
+  authorId    String   // User que lo escribió (== profile.ownerId, redundante para queries rápidas)
+  title       String
+  description String?
+  photoUrl    String?
+  link        String?
+  confidence  ConfidenceLevel @default(ASSUMED)
+  importance  Int      @default(3) // 1-5 estrellas
+  discoveredAt DateTime @default(now())
+  reasonToRemember String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  profile  Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  category KnowledgeCategory @relation(fields: [categoryId], references: [id])
+  author   User @relation("EntryAuthor", fields: [authorId], references: [id])
+
+  tags EntryTag[]
+  giftIdeas GiftIdea[]
+
+  @@index([profileId])
+  @@index([categoryId])
+}
+
+model Tag {
+  id    String @id @default(cuid())
+  label String @unique
+
+  entries EntryTag[]
+}
+
+model EntryTag {
+  entryId String
+  tagId   String
+
+  entry KnowledgeEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  tag   Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([entryId, tagId])
+}
+
+// ---------- RECUERDOS ----------
+
+model Memory {
+  id          String   @id @default(cuid())
+  profileId   String
+  authorId    String
+  title       String
+  description String?
+  happenedAt  DateTime?
+  location    String?
+  song        String?
+  emotion     String?
+  createdAt   DateTime @default(now())
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  author  User @relation("MemoryAuthor", fields: [authorId], references: [id])
+  media   MemoryMedia[]
+
+  @@index([profileId])
+}
+
+model MemoryMedia {
+  id       String @id @default(cuid())
+  memoryId String
+  url      String
+  kind     String @default("image") // image | audio
+
+  memory Memory @relation(fields: [memoryId], references: [id], onDelete: Cascade)
+}
+
+// ---------- TIMELINE DE LA RELACIÓN (compartida por la couple) ----------
+
+model TimelineEvent {
+  id        String   @id @default(cuid())
+  coupleId  String
+  title     String
+  description String?
+  icon      String  @default("⭐")
+  eventDate DateTime
+  createdAt DateTime @default(now())
+
+  couple Couple @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+
+  @@index([coupleId])
+}
+
+// ---------- REGALOS Y WISHLIST ----------
+
+enum GiftStatus {
+  SUGGESTED
+  SAVED
+  GIVEN
+  DISMISSED
+}
+
+model GiftIdea {
+  id        String   @id @default(cuid())
+  profileId String
+  sourceEntryId String?
+  title     String
+  reason    String?
+  status    GiftStatus @default(SUGGESTED)
+  createdAt DateTime @default(now())
+
+  profile     Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  sourceEntry KnowledgeEntry? @relation(fields: [sourceEntryId], references: [id])
+}
+
+model WishlistItem {
+  id        String @id @default(cuid())
+  profileId String
+  title     String
+  notes     String?
+  createdAt DateTime @default(now())
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+}
+
+// ---------- QUIZ ----------
+
+model Quiz {
+  id        String   @id @default(cuid())
+  profileId String
+  createdAt DateTime @default(now())
+
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  questions QuizQuestion[]
+}
+
+model QuizQuestion {
+  id            String @id @default(cuid())
+  quizId        String
+  entryId       String
+  questionText  String
+  correctAnswer String
+  distractors   String[] // opciones incorrectas
+  answeredCorrectly Boolean?
+
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+}
+
+// ---------- NOTIFICACIONES ----------
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

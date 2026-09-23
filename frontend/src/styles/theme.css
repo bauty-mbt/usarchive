@@ -1,0 +1,110 @@
+/* UsArchive — sistema de temas.
+   Decisión de diseño: en vez de "rosa/azul", cada tema es un universo
+   editorial completo (fondo, tinta, acento, textura) aplicado vía
+   data-theme en <html>. Tipografía: Fraunces (serif editorial, con calidez
+   humana) para títulos + Inter para texto — evita la estética SaaS genérica
+   de un solo sans-serif geométrico. */
+
+:root {
+  --font-serif: "Fraunces", ui-serif, Georgia, serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* MINIMAL — default. Papel claro, tinta casi negra, acento terracota apagado. */
+[data-theme="minimal"] {
+  --color-surface: #faf9f6;
+  --color-surface-alt: #f1efe9;
+  --color-ink: #21201c;
+  --color-ink-muted: #6b675e;
+  --color-accent: #b5654a;
+  --color-accent-soft: #e9d9cf;
+  --color-line: #e2ded3;
+}
+
+/* GARDEN — verdes suaves, cálido, orgánico. */
+[data-theme="garden"] {
+  --color-surface: #f5f6ef;
+  --color-surface-alt: #e9ecd9;
+  --color-ink: #24301f;
+  --color-ink-muted: #5c6650;
+  --color-accent: #5f7a4d;
+  --color-accent-soft: #d9e2c6;
+  --color-line: #dbe0cb;
+}
+
+/* MIDNIGHT — oscuro, azul tinta, dorado apagado como acento. */
+[data-theme="midnight"] {
+  --color-surface: #12151c;
+  --color-surface-alt: #1b1f2a;
+  --color-ink: #eceff4;
+  --color-ink-muted: #9aa2b2;
+  --color-accent: #c9a15a;
+  --color-accent-soft: #2c2a1f;
+  --color-line: #2a2f3c;
+}
+
+/* PAPER — blanco hueso, líneas finas, tipografía protagonista. */
+[data-theme="paper"] {
+  --color-surface: #ffffff;
+  --color-surface-alt: #f7f6f3;
+  --color-ink: #1a1a1a;
+  --color-ink-muted: #767676;
+  --color-accent: #2f2f2f;
+  --color-accent-soft: #ececec;
+  --color-line: #e6e6e6;
+}
+
+/* DIGITAL — grises fríos, acento cian eléctrico contenido. */
+[data-theme="digital"] {
+  --color-surface: #0f1113;
+  --color-surface-alt: #181b1e;
+  --color-ink: #e7eef0;
+  --color-ink-muted: #8b979c;
+  --color-accent: #4fd1c5;
+  --color-accent-soft: #16302d;
+  --color-line: #232729;
+}
+
+/* SUNSET — cálido, rosados terrosos, naranjas quemados. */
+[data-theme="sunset"] {
+  --color-surface: #fbf1ea;
+  --color-surface-alt: #f5e0cf;
+  --color-ink: #3a2418;
+  --color-ink-muted: #8a6650;
+  --color-accent: #d1592f;
+  --color-accent-soft: #f0c9a8;
+  --color-line: #eed7c1;
+}
+
+/* COSMIC — violeta profundo, casi negro, estrellas sutiles. */
+[data-theme="cosmic"] {
+  --color-surface: #131022;
+  --color-surface-alt: #1c1834;
+  --color-ink: #f0eefc;
+  --color-ink-muted: #a79fcf;
+  --color-accent: #9d7bff;
+  --color-accent-soft: #2a2350;
+  --color-line: #2b264a;
+}
+
+/* CUSTOM — placeholder; se sobreescribe dinámicamente si el usuario
+   elige colores propios (guardados en Couple.theme = CUSTOM + prefs). */
+[data-theme="custom"] {
+  --color-surface: #faf9f6;
+  --color-surface-alt: #f1efe9;
+  --color-ink: #21201c;
+  --color-ink-muted: #6b675e;
+  --color-accent: #b5654a;
+  --color-accent-soft: #e9d9cf;
+  --color-line: #e2ded3;
+}
+
+html {
+  scroll-padding-top: env(safe-area-inset-top, 0px);
+}
+
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
