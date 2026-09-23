@@ -169,8 +169,9 @@ model KnowledgeEntry {
   category KnowledgeCategory @relation(fields: [categoryId], references: [id])
   author   User @relation("EntryAuthor", fields: [authorId], references: [id])
 
-  tags EntryTag[]
+    tags EntryTag[]
   giftIdeas GiftIdea[]
+  quizQuestions QuizQuestion[]
 
   @@index([profileId])
   @@index([categoryId])
@@ -291,7 +292,8 @@ model QuizQuestion {
   distractors   String[] // opciones incorrectas
   answeredCorrectly Boolean?
 
-  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+    quiz  Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  entry KnowledgeEntry @relation(fields: [entryId], references: [id])
 }
 
 // ---------- NOTIFICACIONES ----------
